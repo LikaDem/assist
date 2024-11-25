@@ -317,7 +317,7 @@ def tasks_menu():
         print('7. Импортировать задачи из CSV')
         print('8. Назад')
 
-        choise = int(input('Введите номер действия: ')).strip()
+        choise = int(input('Введите номер действия: '))
 
         if choise == 1:
             title = input('Введите заголовок задачи: ')
