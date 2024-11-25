@@ -7,7 +7,7 @@ import pandas as pd
 NOTES_FILE = 'notes.json'
 TASKS_FILE = 'tasks.json'
 CONTACTS_FILE = 'contacts.json'
-FINANCE_FILE = 'finance.csv'
+FINANCE_FILE = 'finance.json'
 
 def save_data(file_path, data):
     with open(file_path, 'w', encoding='utf-8') as file:
@@ -123,9 +123,9 @@ class NoteManager:
             reader = csv.DictReader(file)
             for row in reader:
                 note_id = max([note.note_id for note in self.notes], default=0) + 1
-                title = row.get['Заголовок', '']
-                content = row.get['Содержимое', '']
-                timestamp = row.get['Дата', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]
+                title = row.get('Заголовок', '')
+                content = row.get('Содержимое', '')
+                timestamp = row.get('Дата', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
                 new_note = Note(note_id, title, content, timestamp)
                 self.notes.append(new_note)
             self.save_notes()
@@ -214,19 +214,20 @@ class TaskManager:
             print("Ошибка: Некорректный формат даты. Укажите дату в формате ДД-ММ-ГГГГ.")
             return
         task_id = max([task.task_id for task in self.tasks], default=0) + 1
-        new_task = Task(task_id, title, description, priority, due_date)
+        new_task = Task(task_id, title, description, done=False, priority=priority, due_date=due_date)
         self.tasks.append(new_task)
         self.save_tasks()
         print('Задача успешно добавлена')
 
     def list_tasks(self):
         if not self.tasks:
-            print('Список задач пуст')
+            print("Список задач пуст.")
             return
         for task in self.tasks:
-            print(f"{task.task_id}. {task.title} (Статус: {'Выполнено' if task.done else 'Не выполнено'}, Приоритет: {task.priority}, Срок: {task.due_date})")
-            print(f"   Содержимое: {task.description}")
-
+            status = "Выполнена" if task.done else "Не выполнена"
+            due_date = task.due_date if task.due_date else "Не указано"
+            print(f"ID: {task.task_id}, Заголовок: {task.title}, Статус: {status}, Приоритет: {task.priority}, Срок: {due_date}")
+            print(f"Описание: {task.description}")
 
     def mark_task_done(self, task_id):
         task = self.get_task_by_id(task_id)
@@ -302,9 +303,6 @@ class TaskManager:
             self.save_tasks()
         print(f'Задачи успешно импортированы из файла {file_name}')
 
-    def import_tasks_from_csv(self):
-        file_name = input('Введите имя CSV-файла: ')
-
 def tasks_menu():
     manager = TaskManager()
     while True:
@@ -326,8 +324,6 @@ def tasks_menu():
             priority = input('Введите приоритет задачи (Низкий, Средний, Высокий): ').strip()
             due_date = input('Введите срок выполнения задачи (ДД-ММ-ГГГГ): ').strip()
             manager.add_task(title, description, priority, due_date)
-            if priority in ['Низкий', 'Средний', 'Высокий'] and is_valid_date(due_date):
-                break
         elif choise == 2:
             manager.list_tasks()
         elif choise == 3:
@@ -430,12 +426,14 @@ class ContactManager:
         if not self.contacts:
             print('Контакты не найдены')
             return
+        
+        file_name = 'contacts.csv'
 
-        with open(CONTACTS_FILE, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile, fieldnames = ['ID', 'Имя', 'Телефон', 'Электронная почта'])
+        with open(file_name, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames = ['ID', 'Имя', 'Телефон', 'Электронная почта'])
             writer.writeheader()
             for contact in self.contacts:
-                writer.witerow({
+                writer.writerow({
                     'ID': contact.contact_id,
                     'Имя': contact.name,
                     'Телефон': contact.phone,
@@ -577,9 +575,10 @@ class FinanceManager:
         if not self.records:
             print('Записи не найдены')
             return
-
-        with open(FINANCE_FILE, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.writer(csvfile, fieldnames = ['ID', 'Описание', 'Сумма', 'Категория', 'Дата'])
+        
+        file_name = 'records.csv'
+        with open(file_name, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames = ['ID', 'Описание', 'Сумма', 'Категория', 'Дата'])
             writer.writeheader()
             for record in self.records:
                 writer.writerow({
@@ -590,14 +589,16 @@ class FinanceManager:
                     'Дата': record.date
                 })
 
-        print(f'Записи успешно экспортированы в файл {FINANCE_FILE}')
+        print(f'Записи успешно экспортированы в файл {file_name}')
 
     def import_records_from_csv(self):
-        if not os.path.exists(FINANCE_FILE):
-            print(f'Файл {FINANCE_FILE} не найден')
+        file_name = input('Введите имя CSV-файла: ')
+
+        if not os.path.exists(file_name):
+            print(f'Файл {file_name} не найден')
             return
 
-        with open(FINANCE_FILE, 'r', newline='', encoding='utf-8') as csvfile:
+        with open(file_name, 'r', newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 record_id = max([record.record_id for record in self.records], default=0) + 1
@@ -671,6 +672,97 @@ def finance_menu():
         else:
             print('Неверный номер действия, попробуйте снова')
 
+class Calculator:
+    def __init__(self):
+        pass
+
+    def add(self, num1, num2):
+        return num1 + num2
+    
+    def subtract(self, num1, num2):
+        return num1 - num2
+    
+    def multiply(self, num1, num2):
+        return num1 * num2
+    
+    def divide(self, num1, num2):
+        if num2 == 0:
+            raise ZeroDivisionError("Деление на ноль невозможно")
+        return num1 / num2
+    
+    def evaluate_expression(self, expression):
+        try:
+            allowed_chars = "0123456789+-*/(). "
+            if not all(char in allowed_chars for char in expression):
+                raise ValueError("Недопустимые символы в выражении")
+            result = eval(expression, {'__builtins__': None}, {})
+            return result
+        except ZeroDivisionError:
+            raise ValueError("Деление на ноль невозможно")
+        except Exception:
+            raise ValueError("Неверное выражение")
+
+def calculator_menu():
+    calculator = Calculator()
+    while True:
+        print('Калькулятор:')
+        print('1. Сложение')
+        print('2. Вычитание')
+        print('3. Умножение')
+        print('4. Деление')
+        print('5. Вычислить выражение')
+        print('6. Назад')
+
+        choise = int(input('Выберите действие: '))
+
+        if choise == 1:
+            try:
+                num1 = float(input('Введите первое число: '))
+                num2 = float(input('Введите второе число: '))
+                result = calculator.add(num1, num2)
+                print(f'Результат: {result}')
+            except ValueError:
+                print('Введите корректные числа')
+        elif choise == 2:
+            try:
+                num1 = float(input('Введите первое число: '))
+                num2 = float(input('Введите второе число: '))
+                result = calculator.subtract(num1, num2)
+                print(f'Результат: {result}')
+            except ValueError:
+                print('Введите корректные числа')
+        elif choise == 3:
+            try:
+                num1 = float(input('Введите первое число: '))
+                num2 = float(input('Введите второе число: '))
+                result = calculator.multiply(num1, num2)
+                print(f'Результат: {result}')
+            except ValueError:
+                print('Введите корректные числа')
+        elif choise == 4:
+            try:
+                num1 = float(input('Введите первое число: '))
+                num2 = float(input('Введите второе число: '))
+                try:
+                    result = calculator.divide(num1, num2)
+                    print(f'Результат: {result}')
+                except ZeroDivisionError:
+                    print('Деление на ноль невозможно')
+            except ValueError:
+                print(f'Ошибка ввода')
+        elif choise == 5:
+            expression = input('Введите выражение: ')
+            try:
+                result = calculator.evaluate_expression(expression)
+                print(f'Результат: {result}')
+            except ValueError as e:
+                print(f'Ошибка: {e}')
+        elif choise == 6:
+            break
+        else:
+            print('Неверный номер действия, попробуйте снова')
+
+
 def main_menu():
     while True:
         print ('Добро пожаловать в Персональный помощник!')
@@ -692,6 +784,8 @@ def main_menu():
             contacts_menu()
         elif choise == 4:
             finance_menu()
+        elif choise == 5:
+            calculator_menu()
         elif choise == 6:
             print('До свидания!')
             break
