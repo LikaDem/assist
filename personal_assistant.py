@@ -5,6 +5,7 @@ import datetime
 import pandas as pd
 
 NOTES_FILE = 'notes.json'
+TASKS_FILE = 'tasks.json'
 
 def save_data(file_path, data):
     with open(file_path, 'w', encoding='utf-8') as file:
@@ -171,6 +172,175 @@ def notes_menu():
         else:
             print('Неверный номер действия, попробуйте снова')
 
+class Task:
+    def __init__(self, task_id, title, description, done=False, priority="Средний", due_date=None):
+        self.task_id = task_id
+        self.title = title
+        self.description = description
+        self.done = done
+        self.priority = priority
+        self.due_date = due_date
+
+class TaskManager:
+    def __init__(self):
+        self.tasks = []
+        self.load_tasks()
+
+    def load_tasks(self):
+        data = load_data(TASKS_FILE, [])
+        self.tasks = [Task(**task) for task in data]
+
+    def save_tasks(self):
+        data = [task.__dict__ for task in self.tasks]
+        save_data(TASKS_FILE, data)
+
+    def add_task(self, title, description, priority="Средний", due_date=None):
+        task_id = max([task.task_id for task in self.tasks], default=0) + 1
+        new_task = Task(task_id, title, description, priority, due_date)
+        self.tasks.append(new_task)
+        self.save_tasks()
+        print('Задача успешно добавлена')
+
+    def list_tasks(self):
+        if not self.tasks:
+            print('Список задач пуст')
+            return
+        for task in self.tasks:
+            print(f"{task.task_id}. {task.title} (Статус: {'Выполнено' if task.done else 'Не выполнено'}, Приоритет: {task.priority}, Срок: {task.due_date})")
+            print(f"   Содержимое: {task.description}")
+
+
+    def mark_task_done(self, task_id):
+        task = self.get_task_by_id(task_id)
+        if task:
+            task.done = True
+            self.save_tasks()
+            print('Задача успешно выполнена')
+        else:
+            print('Задача не найдена')
+
+    def get_task_by_id(self, task_id):
+        for task in self.tasks:
+            if task.task_id == task_id:
+                return task
+        return None
+
+    def edit_task(self, task_id, new_title=None, new_description=None, new_priority=None, new_due_date=None):
+        task = self.get_task_by_id(task_id)
+        if task:
+            task.title = new_title or task.title
+            task.description = new_description or task.description
+            task.priority = new_priority or task.priority
+            task.due_date = new_due_date or task.due_date
+            self.save_tasks()
+            print('Задача успешно отредактирована')
+        else:
+            print('Задача не найдена')
+
+    def delete_task(self, task_id):
+        task = self.get_task_by_id(task_id)
+        if task:
+            self.tasks.remove(task)
+            self.save_tasks()
+            print('Задача успешно удалена')
+        else:
+            print('Задача не найдена')
+
+    def export_tasks_to_csv(self):
+        if not self.tasks:
+            print('Список задач пуст')
+            return
+        file_name = 'tasks.csv'
+        with open(file_name, 'w', newline='\n', encoding='utf-8') as file:
+            writer = csv.DictWriter(file, fieldnames=['ID', 'Заголовок', 'Описание', 'Статус', 'Приоритет', 'Срок'])
+            writer.writeheader()
+            for task in self.tasks:
+                writer.writerow({
+                    'ID': task.task_id,
+                    'Заголовок': task.title,
+                    'Описание': task.description,
+                    'Статус': 'Выполненo' if task.done else 'Не выполненo',
+                    'Приоритет': task.priority,
+                    'Срок': task.due_date
+                })
+        print( f'Задачи успешно экспортированы в файл {file_name}')
+
+    def import_tasks_from_csv(self):
+        file_name = input('Введите имя CSV-файла: ')
+        if not os.path.exists(file_name):
+            print(f'Файл {file_name} не найден')
+            return
+        with open(file_name, 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                task_id = max([task.task_id for task in self.tasks], default=0) + 1
+                title = row.get('Заголовок', '')
+                description = row.get('Описание', '')
+                done = row.get('Статус', 'Не выполненo') == 'Выполненo'
+                priority = row.get('Приоритет', 'Средний')
+                due_date = row.get('Срок', None)
+                new_task = Task(task_id, title, description, done, priority, due_date)
+                self.tasks.append(new_task)
+            self.save_tasks()
+        print(f'Задачи успешно импортированы из файла {file_name}')
+
+    def import_tasks_from_csv(self):
+        file_name = input('Введите имя CSV-файла: ')
+
+def tasks_menu():
+    manager = TaskManager()
+    while True:
+        print('Управление задачами:')
+        print('1. Добавить новую задачу')
+        print('2. Просмотреть список задач')
+        print('3. Отметить задачу как выполненную')
+        print('4. Редактировать задачу')
+        print('5. Удалить задачу')
+        print('6. Экспортировать задачи в CSV')
+        print('7. Импортировать задачи из CSV')
+        print('8. Назад')
+
+        choise = int(input('Введите номер действия: '))
+
+        if choise == 1:
+            title = input('Введите заголовок задачи: ')
+            description = input('Введите описание задачи: ')
+            priority = input('Введите приоритет задачи (Низкий, Средний, Высокий): ')
+            due_date = input('Введите срок выполнения задачи (ДД-ММ-ГГГГ): ')
+            manager.add_task(title, description, priority, due_date)
+        elif choise == 2:
+            manager.list_tasks()
+        elif choise == 3:
+            try:
+                task_id = int(input('Введите ID задачи: '))
+                manager.mark_task_done(task_id)
+            except ValueError:
+                print('ID задачи не корректен')
+        elif choise == 4:
+            try:
+                task_id = int(input('Введите ID задачи: '))
+                new_title = input('Введите новый заголовок задачи: ')
+                new_description = input('Введите новое описание задачи: ')
+                new_priority = input('Введите новый приоритет задачи (Низкий, Средний, Высокий): ') 
+                new_due_date = input('Введите новый срок выполнения задачи (ДД-ММ-ГГГГ): ')
+                manager.edit_task(task_id, new_title, new_description, new_priority, new_due_date)
+            except ValueError:
+                print('ID задачи не корректен')
+        elif choise == 5:
+            try:
+                task_id = int(input('Введите ID задачи: '))
+                manager.delete_task(task_id)
+            except ValueError:
+                print('ID задачи не корректен')
+        elif choise == 6:
+            manager.export_tasks_to_csv()
+        elif choise == 7:
+            manager.import_tasks_from_csv()
+        elif choise == 8:
+            break
+        else:
+            print('Неверный номер действия, попробуйте снова')
+
 def main_menu():
     while True:
         print ('Добро пожаловать в Персональный помощник!')
@@ -186,6 +356,8 @@ def main_menu():
 
         if choise == 1:
             notes_menu()
+        elif choise == 2:
+            tasks_menu()
         elif choise == 6:
             print('До свидания!')
             break
