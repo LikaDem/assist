@@ -17,6 +17,14 @@ def load_data(file_path, default_data):
         return default_data
     with open(file_path, 'r', encoding='utf-8') as file:
         return json.load(file)
+    
+def is_valid_date(date_str):
+    try:
+        datetime.datetime.strptime(date_str, '%d-%m-%Y')
+        return True
+    except ValueError:
+        return False
+
 
 class Note:
     def __init__(self, note_id, title, content, timestamp):
@@ -195,6 +203,15 @@ class TaskManager:
         save_data(TASKS_FILE, data)
 
     def add_task(self, title, description, priority="Средний", due_date=None):
+        valid_priorities = ['Низкий', 'Средний', 'Высокий']
+        if priority not in valid_priorities:
+            print("Ошибка: Некорректное значение приоритета. Выберите из: Низкий, Средний, Высокий.")
+            return
+        try:
+            datetime.datetime.strptime(due_date, '%d-%m-%Y')  # Проверка формата ДД-ММ-ГГГГ
+        except ValueError:
+            print("Ошибка: Некорректный формат даты. Укажите дату в формате ДД-ММ-ГГГГ.")
+            return
         task_id = max([task.task_id for task in self.tasks], default=0) + 1
         new_task = Task(task_id, title, description, priority, due_date)
         self.tasks.append(new_task)
@@ -300,14 +317,16 @@ def tasks_menu():
         print('7. Импортировать задачи из CSV')
         print('8. Назад')
 
-        choise = int(input('Введите номер действия: '))
+        choise = int(input('Введите номер действия: ')).strip()
 
         if choise == 1:
             title = input('Введите заголовок задачи: ')
             description = input('Введите описание задачи: ')
-            priority = input('Введите приоритет задачи (Низкий, Средний, Высокий): ')
-            due_date = input('Введите срок выполнения задачи (ДД-ММ-ГГГГ): ')
+            priority = input('Введите приоритет задачи (Низкий, Средний, Высокий): ').strip()
+            due_date = input('Введите срок выполнения задачи (ДД-ММ-ГГГГ): ').strip()
             manager.add_task(title, description, priority, due_date)
+            if priority in ['Низкий', 'Средний', 'Высокий'] and is_valid_date(due_date):
+                break
         elif choise == 2:
             manager.list_tasks()
         elif choise == 3:
