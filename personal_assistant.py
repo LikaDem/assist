@@ -6,6 +6,7 @@ import pandas as pd
 
 NOTES_FILE = 'notes.json'
 TASKS_FILE = 'tasks.json'
+CONTACTS_FILE = 'contacts.json'
 
 def save_data(file_path, data):
     with open(file_path, 'w', encoding='utf-8') as file:
@@ -24,7 +25,6 @@ def is_valid_date(date_str):
         return True
     except ValueError:
         return False
-
 
 class Note:
     def __init__(self, note_id, title, content, timestamp):
@@ -360,6 +360,153 @@ def tasks_menu():
         else:
             print('Неверный номер действия, попробуйте снова')
 
+class Contact:
+    def __init__(self, contact_id, name, phone, email):
+        self.contact_id = contact_id
+        self.name = name
+        self.phone = phone
+        self.email = email
+
+class ContactManager:
+    def __init__(self):
+        self.contacts = []
+        self.load_contacts()
+
+    def load_contacts(self):
+        data = load_data(CONTACTS_FILE, [])
+        self.contacts = [Contact(**contact) for contact in data]
+
+    def save_contacts(self):
+        data = [contact.__dict__ for contact in self.contacts]
+        save_data(CONTACTS_FILE, data)
+
+    def add_contact(self, name, phone, email):
+        contact_id = max([contact.contact_id for contact in self.contacts], default=0) + 1
+        new_contact = Contact(contact_id, name, phone, email)
+        self.contacts.append(new_contact)
+        self.save_contacts()
+        print('Контакт успешно добавлен')
+
+    def search_contacts(self, query):
+        results = [
+            contact for contact in self.contacts
+            if query.lower() in contact.name.lower() or query in contact.phone
+        ]
+        if results:
+            print('Результаты поиска:')
+            for contact in results:
+                print(f'ID: {contact.contact_id}, Имя: {contact.name}, Телефон: {contact.phone}, Электронная почта: {contact.email}')
+        else:
+            print('Ничего не найдено')
+
+    def edit_contact(self, contact_id, new_name, new_phone, new_email):
+        contact = self.get_contact_by_id(contact_id)
+        if contact:
+            contact.name = new_name
+            contact.phone = new_phone
+            contact.email = new_email
+            self.save_contacts()
+            print('Контакт успешно отредактирован')
+        else:
+            print('Контакт не найден')
+
+    def delete_contact(self, contact_id):
+        contact = self.get_contact_by_id(contact_id)
+        if contact:
+            self.contacts.remove(contact)
+            self.save_contacts()
+            print('Контакт успешно удален')
+        else:
+            print('Контакт не найден')
+
+    def get_contact_by_id(self, contact_id):
+        for contact in self.contacts:
+            if contact.contact_id == contact_id:
+                return contact
+        return None
+
+    def export_contacts_to_csv(self):
+        if not self.contacts:
+            print('Контакты не найдены')
+            return
+
+        with open(CONTACTS_FILE, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, fieldnames = ['ID', 'Имя', 'Телефон', 'Электронная почта'])
+            writer.writeheader()
+            for contact in self.contacts:
+                writer.witerow({
+                    'ID': contact.contact_id,
+                    'Имя': contact.name,
+                    'Телефон': contact.phone,
+                    'Электронная почта': contact.email
+                })
+
+        print(f'Контакты успешно экспортированы в файл {CONTACTS_FILE}')
+
+    def import_contacts_from_csv(self):
+        file_name = input('Введите имя CSV-файла: ')
+        if not os.path.exists(file_name):
+            print(f'Файл {file_name} не найден')
+            return
+        with open(file_name, 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                contact_id = int(row['ID'])
+                name = row['Имя']
+                phone = row['Телефон']
+                email = row['Электронная почта']
+                new_contact = Contact(contact_id, name, phone, email)
+                self.contacts.append(new_contact)
+            self.save_contacts()
+        print(f'Контакты успешно импортированы из файла {file_name}')
+
+def contacts_menu():
+    manager = ContactManager()
+
+    while True:
+        print('Управление контактами:')
+        print('1. Добавить новый контакт')
+        print('2. Найти контакт')
+        print('3. Редактировать контакт')
+        print('4. Удалить контакт')
+        print('5. Экспортировать контакты в CSV')
+        print('6. Импортировать контакты из CSV')
+        print('7. Назад')
+
+        choise = int(input('Введите номер действия: '))
+
+        if choise == 1:
+            name = input('Введите имя контакта: ')
+            phone = input('Введите номер телефона контакта: ')
+            email = input('Введите электронную почту контакта: ')
+            manager.add_contact(name, phone, email)
+        elif choise == 2:
+            query = input('Введите имя или номер телефона контакта для поиска: ')
+            manager.search_contacts(query)
+        elif choise == 3:
+            try:
+                contact_id = int(input('Введите ID контакта: '))
+                new_name = input('Введите новое имя контакта: ')
+                new_phone = input('Введите новый номер телефона контакта: ')
+                new_email = input('Введите новую электронную почту контакта: ')
+                manager.edit_contact(contact_id, new_name, new_phone, new_email)
+            except ValueError:
+                print('Неверный формат ID контакта')
+        elif choise == 4:
+            try:
+                contact_id = int(input('Введите ID контакта: '))
+                manager.delete_contact(contact_id)
+            except ValueError:
+                print('Неверный формат ID контакта')
+        elif choise == 5:
+            manager.export_contacts_to_csv()
+        elif choise == 6:
+            manager.import_contacts_from_csv()
+        elif choise == 7:
+            break
+        else:
+            print('Неверный номер действия, попробуйте снова')
+
 def main_menu():
     while True:
         print ('Добро пожаловать в Персональный помощник!')
@@ -377,6 +524,8 @@ def main_menu():
             notes_menu()
         elif choise == 2:
             tasks_menu()
+        elif choise == 3:
+            contacts_menu()
         elif choise == 6:
             print('До свидания!')
             break
